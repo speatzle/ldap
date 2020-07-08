@@ -25,6 +25,8 @@ type Client interface {
 	Compare(dn, attribute, value string) (bool, error)
 	PasswordModify(*PasswordModifyRequest) (*PasswordModifyResult, error)
 
+	WhoAmI(controls []Control) (*WhoAmIResult, error)
+
 	Search(*SearchRequest) (*SearchResult, error)
 	SearchWithPaging(searchRequest *SearchRequest, pagingSize uint32) (*SearchResult, error)
 }

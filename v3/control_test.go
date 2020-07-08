@@ -28,6 +28,10 @@ func TestControlMicrosoftShowDeleted(t *testing.T) {
 	runControlTest(t, NewControlMicrosoftShowDeleted())
 }
 
+func TestControlProxiedAuthorization(t *testing.T) {
+	runControlTest(t, NewControlProxiedAuthorization("dn:uid=someone,ou=people,dc=example,dc=net"))
+}
+
 func TestControlString(t *testing.T) {
 	runControlTest(t, NewControlString("x", true, "y"))
 	runControlTest(t, NewControlString("x", true, ""))
