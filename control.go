@@ -23,6 +23,8 @@ const (
 	ControlTypeMicrosoftNotification = "1.2.840.113556.1.4.528"
 	// ControlTypeMicrosoftShowDeleted - https://msdn.microsoft.com/en-us/library/aa366989(v=vs.85).aspx
 	ControlTypeMicrosoftShowDeleted = "1.2.840.113556.1.4.417"
+	// ControlTypeProxiedAuthorization - https://tools.ietf.org/html/rfc4370
+	ControlTypeProxiedAuthorization = "2.16.840.1.113730.3.4.18"
 )
 
 // ControlTypeMap maps controls to text descriptions
@@ -32,6 +34,7 @@ var ControlTypeMap = map[string]string{
 	ControlTypeManageDsaIT:           "Manage DSA IT",
 	ControlTypeMicrosoftNotification: "Change Notification - Microsoft",
 	ControlTypeMicrosoftShowDeleted:  "Show Deleted Objects - Microsoft",
+	ControlTypeProxiedAuthorization:  "Proxied Authorization",
 }
 
 // Control defines an interface controls provide to encode and describe themselves
@@ -288,7 +291,27 @@ func (c *ControlMicrosoftShowDeleted) GetControlType() string {
 func (c *ControlMicrosoftShowDeleted) Encode() *ber.Packet {
 	packet := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Control")
 	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, ControlTypeMicrosoftShowDeleted, "Control Type ("+ControlTypeMap[ControlTypeMicrosoftShowDeleted]+")"))
+	return packet
+}
 
+// ControlProxiedAuthorization implements the control described in
+// https://tools.ietf.org/html/rfc4370
+type ControlProxiedAuthorization struct {
+	Criticality bool
+	AuthzID     string
+}
+
+// GetControlType returns the OID
+func (c *ControlProxiedAuthorization) GetControlType() string {
+	return ControlTypeProxiedAuthorization
+}
+
+// Encode returns the ber packet representation
+func (c *ControlProxiedAuthorization) Encode() *ber.Packet {
+	packet := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Control")
+	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, ControlTypeProxiedAuthorization, "Control Type ("+ControlTypeMap[ControlTypeProxiedAuthorization]+")"))
+	packet.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimitive, ber.TagBoolean, c.Criticality, "Criticality"))
+	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, c.AuthzID, "AuthzID"))
 	return packet
 }
 
@@ -303,6 +326,22 @@ func (c *ControlMicrosoftShowDeleted) String() string {
 // NewControlMicrosoftShowDeleted returns a ControlMicrosoftShowDeleted control
 func NewControlMicrosoftShowDeleted() *ControlMicrosoftShowDeleted {
 	return &ControlMicrosoftShowDeleted{}
+}
+
+func (c *ControlProxiedAuthorization) String() string {
+	return fmt.Sprintf(
+		"Control Type: %s (%q)  Criticality: %t",
+		ControlTypeMap[ControlTypeProxiedAuthorization],
+		ControlTypeProxiedAuthorization,
+		c.Criticality)
+}
+
+// NewControlProxiedAuthorization returns a ProxiedAuthorization control
+func NewControlProxiedAuthorization(authzID string) *ControlProxiedAuthorization {
+	return &ControlProxiedAuthorization{
+		Criticality: true,
+		AuthzID:     authzID,
+	}
 }
 
 // FindControl returns the first control of the given type in the list, or nil
@@ -456,6 +495,11 @@ func DecodeControl(packet *ber.Packet) (Control, error) {
 		return NewControlMicrosoftNotification(), nil
 	case ControlTypeMicrosoftShowDeleted:
 		return NewControlMicrosoftShowDeleted(), nil
+	case ControlTypeProxiedAuthorization:
+		c := &ControlProxiedAuthorization{Criticality: true}
+		authzID := ber.DecodeString(value.Data.Bytes())
+		c.AuthzID = authzID
+		return c, nil
 	default:
 		c := new(ControlString)
 		c.ControlType = ControlType
